@@ -78,14 +78,22 @@ struct KNContactUtils {
         if c1.givenName == c2.givenName {
             return c1.familyName < c2.familyName
         }
-        return c1.givenName < c2.givenName
+        
+        let c1Name = c1.givenName == "" ? c1.familyName : c1.givenName
+        let c2Name = c2.givenName == "" ? c2.familyName : c2.givenName
+        
+        return c1Name < c2Name
     }
     
     static func sortByFamilyName(c1: CNContact, c2:CNContact) -> Bool {
         if c1.familyName == c2.familyName {
             return c1.givenName < c2.givenName
         }
-        return c1.familyName < c2.familyName
+
+        let c1Name = c1.familyName == "" ? c1.givenName : c1.familyName
+        let c2Name = c2.familyName == "" ? c2.givenName : c2.familyName
+        
+        return c1Name < c2Name
     }
     
     static func sortContactsIntoSections(contacts: [CNContact], sortingType: KNContactSortingOption) -> (sections: [String], sortedContacts: [CNContact], contactsSortedInSections: [String: [CNContact]]) {
@@ -99,7 +107,7 @@ struct KNContactUtils {
         switch sortingType {
         case .givenName:
             sortedContacts = contacts.sorted(by: { sortByGivenName(c1: $0, c2: $1) })
-            for contact in contacts {
+            for contact in sortedContacts {
                 sortedContactsInSection = self.addToSortedContacts(sortedContactsInSection, contact: contact, groupBy: {
                     if (decideOnLetter(for: contact.givenName) == ALL_OTHERS_VALUE) {
                         return self.decideOnLetter(for: contact.familyName)
@@ -109,7 +117,7 @@ struct KNContactUtils {
             }
         case .familyName:
             sortedContacts = contacts.sorted(by: { sortByFamilyName(c1: $0, c2: $1) })
-            for contact in contacts {
+            for contact in sortedContacts {
                 sortedContactsInSection = self.addToSortedContacts(sortedContactsInSection, contact: contact, groupBy: {
                     if (decideOnLetter(for: contact.familyName) == ALL_OTHERS_VALUE) {
                         return self.decideOnLetter(for: contact.givenName)
