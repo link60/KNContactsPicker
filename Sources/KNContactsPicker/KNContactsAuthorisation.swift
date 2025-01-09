@@ -49,8 +49,7 @@ class KNContactsAuthorisation {
             })
             return result
             
-        case  CNAuthorizationStatus.authorized:
-
+        case  CNAuthorizationStatus.authorized, CNAuthorizationStatus(rawValue: 4):
             var allContacts = [CNContact]()
             let fetchRequestKeys = CNContactFetchRequest(keysToFetch: KNContactUtils.getBasicDisplayKeys())
             
@@ -60,7 +59,6 @@ class KNContactsAuthorisation {
                         allContacts.append(contact)
                     }
                 })
-              
                 return Result.success(allContacts)
             }
 

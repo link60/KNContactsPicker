@@ -16,16 +16,18 @@ open class KNContactsPicker: UINavigationController {
     weak var contactPickingDelegate: KNContactPickingDelegate!
     private var contacts: [CNContact] = []
     
-    var tableViewStyle: UITableView.Style {
-        get {
-            if #available(iOS 13.0, *) {
-                return UITableView.Style.insetGrouped
+    let contactPickerController = KNContactsPickerController(style: .insetGrouped)
+    
+    private var sortingOutcome: KNSortingOutcome? {
+        didSet {
+            DispatchQueue.main.async {
+                self.contactPickerController.contacts = self.sortingOutcome?.sortedContacts ?? []
+                self.contactPickerController.sortedContacts = self.sortingOutcome?.contactsSortedInSections ?? [:]
+                self.contactPickerController.sections = self.sortingOutcome?.sections ?? []
+                self.contactPickerController.tableView.reloadData()
             }
-            return UITableView.Style.grouped
         }
     }
-    
-    private var sortingOutcome: KNSortingOutcome?
     
     override open func viewDidLoad() {
         super.viewDidLoad()
@@ -34,7 +36,9 @@ open class KNContactsPicker: UINavigationController {
         self.navigationBar.prefersLargeTitles = true
         self.navigationItem.largeTitleDisplayMode = .always
         
-        let contactPickerController = self.getContactsPicker()
+        contactPickerController.settings = settings
+        contactPickerController.delegate = contactPickingDelegate
+        contactPickerController.presentationDelegate = self
         
         self.presentationController?.delegate = contactPickerController
         self.viewControllers.append(contactPickerController)
@@ -46,41 +50,28 @@ open class KNContactsPicker: UINavigationController {
         self.settings = settings
     }
     
-    func getContactsPicker() -> KNContactsPickerController {
-        let controller = KNContactsPickerController(style: tableViewStyle)
-        
-        controller.settings = settings
-        controller.delegate = contactPickingDelegate
-        controller.presentationDelegate = self
-        controller.contacts = sortingOutcome?.sortedContacts ?? []
-        controller.sortedContacts = sortingOutcome?.contactsSortedInSections ?? [:]
-        controller.sections = sortingOutcome?.sections ?? []
-        
-        return controller
-    }
-    
     func fetchContacts() {
-      
-        switch settings.pickerContactsSource {
-        case .userProvided:
-            self.sortingOutcome = KNContactUtils.sortContactsIntoSections(contacts: settings.pickerContactsList, sortingType: settings.displayContactsSortedBy)
-        case .default:
-            requestAndSortContacts()
+        DispatchQueue.global(qos: .background).async {
+            switch self.settings.pickerContactsSource {
+                case .userProvided:
+                    self.sortingOutcome = KNContactUtils.sortContactsIntoSections(contacts: self.settings.pickerContactsList, sortingType: self.settings.displayContactsSortedBy)
+                case .default:
+                    self.requestAndSortContacts()
+            }
         }
-        
     }
     
     private func requestAndSortContacts() {
         switch KNContactsAuthorisation.requestAccess(conditionToEnableContact: settings.conditionToDisplayContact) {
-        case .success(let resultContacts):
-            self.sortingOutcome = KNContactUtils.sortContactsIntoSections(contacts: resultContacts, sortingType: settings.displayContactsSortedBy)
-            
-        case .failure(let failureReason):
-            if failureReason != .pendingAuthorisation {
-                self.dismiss(animated: true, completion: {
-                    self.contactPickingDelegate?.contactPicker(didFailPicking: failureReason)
-                })
-            }
+            case .success(let resultContacts):
+                self.sortingOutcome = KNContactUtils.sortContactsIntoSections(contacts: resultContacts, sortingType: settings.displayContactsSortedBy)
+                
+            case .failure(let failureReason):
+                if failureReason != .pendingAuthorisation {
+                    self.dismiss(animated: true, completion: {
+                        self.contactPickingDelegate?.contactPicker(didFailPicking: failureReason)
+                    })
+                }
         }
     }
     
