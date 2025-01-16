@@ -62,17 +62,20 @@ open class KNContactsPicker: UINavigationController {
     }
     
     private func requestAndSortContacts() {
-        switch KNContactsAuthorisation.requestAccess(conditionToEnableContact: settings.conditionToDisplayContact) {
-            case .success(let resultContacts):
-                self.sortingOutcome = KNContactUtils.sortContactsIntoSections(contacts: resultContacts, sortingType: settings.displayContactsSortedBy)
-                
-            case .failure(let failureReason):
-                if failureReason != .pendingAuthorisation {
-                    self.dismiss(animated: true, completion: {
-                        self.contactPickingDelegate?.contactPicker(didFailPicking: failureReason)
-                    })
-                }
+        KNContactsAuthorisation.requestAccess(conditionToEnableContact: settings.conditionToDisplayContact) { rst in
+            switch rst {
+                case .success(let resultContacts):
+                    self.sortingOutcome = KNContactUtils.sortContactsIntoSections(contacts: resultContacts, sortingType: self.settings.displayContactsSortedBy)
+                    
+                case .failure(let failureReason):
+                    if failureReason != .pendingAuthorisation {
+                        self.dismiss(animated: true, completion: {
+                            self.contactPickingDelegate?.contactPicker(didFailPicking: failureReason)
+                        })
+                    }
+            }
         }
+        
     }
     
 }

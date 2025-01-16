@@ -33,41 +33,40 @@ public enum KNContactFetchingError: Error {
 class KNContactsAuthorisation {
     static let contactStore = CNContactStore()
     
-    static func requestAccess(conditionToEnableContact: @escaping KNFilteringPredicate) -> Result<[CNContact], KNContactFetchingError> {
-       
+    static func requestAccess(conditionToEnableContact: @escaping KNFilteringPredicate, completion: @escaping ((Result<[CNContact], KNContactFetchingError>) -> Void)) {
         
         var result: Result<[CNContact], KNContactFetchingError> = Result.failure(.pendingAuthorisation)
         
         switch CNContactStore.authorizationStatus(for: .contacts) {
-        
-        case CNAuthorizationStatus.denied, CNAuthorizationStatus.restricted:
-            return Result.failure(.insufficientAccess)
-            
-        case CNAuthorizationStatus.notDetermined:
-            contactStore.requestAccess(for: .contacts, completionHandler: { (granted, error) -> Void in
-                result = granted ? KNContactsAuthorisation.requestAccess(conditionToEnableContact: conditionToEnableContact) : Result.failure(.accessNotGranted)
-            })
-            return result
-            
-        case  CNAuthorizationStatus.authorized, CNAuthorizationStatus(rawValue: 4):
-            var allContacts = [CNContact]()
-            let fetchRequestKeys = CNContactFetchRequest(keysToFetch: KNContactUtils.getBasicDisplayKeys())
-            
-            do {
-                try self.contactStore.enumerateContacts(with: fetchRequestKeys, usingBlock: { (contact, stop) -> Void in
-                    if conditionToEnableContact(contact) {
-                        allContacts.append(contact)
-                    }
+                
+            case CNAuthorizationStatus.denied, CNAuthorizationStatus.restricted:
+                return completion(.failure(.insufficientAccess))
+                
+            case CNAuthorizationStatus.notDetermined:
+                contactStore.requestAccess(for: .contacts, completionHandler: { (granted, error) -> Void in
+                    granted ? KNContactsAuthorisation.requestAccess(conditionToEnableContact: conditionToEnableContact, completion: completion) : completion(.failure(.accessNotGranted))
                 })
-                return Result.success(allContacts)
-            }
-
-            catch {
-                return Result.failure(.fetchRequestFailed)
-            }
-            
-        @unknown default:
-            return Result.failure(.unknownAuthorisation)
+                return completion(result)
+                
+            case  CNAuthorizationStatus.authorized, CNAuthorizationStatus(rawValue: 4):
+                var allContacts = [CNContact]()
+                let fetchRequestKeys = CNContactFetchRequest(keysToFetch: KNContactUtils.getBasicDisplayKeys())
+                
+                do {
+                    try self.contactStore.enumerateContacts(with: fetchRequestKeys, usingBlock: { (contact, stop) -> Void in
+                        if conditionToEnableContact(contact) {
+                            allContacts.append(contact)
+                        }
+                    })
+                    return completion(.success(allContacts))
+                }
+                
+                catch {
+                    return completion(.failure(.fetchRequestFailed))
+                }
+                
+            @unknown default:
+                return completion(.failure(.unknownAuthorisation))
         }
         
     }
