@@ -69,9 +69,11 @@ open class KNContactsPicker: UINavigationController {
                     
                 case .failure(let failureReason):
                     if failureReason != .pendingAuthorisation {
-                        self.dismiss(animated: true, completion: {
-                            self.contactPickingDelegate?.contactPicker(didFailPicking: failureReason)
-                        })
+                        DispatchQueue.main.async {
+                            self.dismiss(animated: true, completion: {
+                                self.contactPickingDelegate?.contactPicker(didFailPicking: failureReason)
+                            })
+                        }
                     }
             }
         }
